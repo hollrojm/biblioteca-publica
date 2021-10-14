@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 
 
-public final class RecursoMapper {
+public  class RecursoMapper {
 
     public Recurso fromDTO(RecursoDTO recursoDto) {
         Recurso recurso = new Recurso();

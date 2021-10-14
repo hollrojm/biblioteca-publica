@@ -9,13 +9,13 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public final class RecursoDTO {
+public class RecursoDTO {
 
     private String id;
     private String nombre;
     private LocalDate fecha;
-    private int cantidadDisponible;
-    private int cantidadPrestada;
+    private Integer cantidadDisponible;
+    private Integer cantidadPrestada;
     private String tipo;
     private String tematica;
 }

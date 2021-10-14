@@ -15,14 +15,14 @@ import java.time.LocalDate;
 @Setter
 
 @Document
-public final class Recurso {
+public class Recurso {
 
     @Id
     private String id;
     private String nombre;
     private LocalDate fecha;
-    private int cantidadDisponible;
-    private int cantidadPrestada;
+    private Integer cantidadDisponible;
+    private Integer cantidadPrestada;
     private String tipo;
     private String tematica;
 
