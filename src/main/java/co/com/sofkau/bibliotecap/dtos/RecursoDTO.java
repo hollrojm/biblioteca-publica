@@ -1,23 +1,16 @@
-package co.com.sofkau.bibliotecap.collections;
+package co.com.sofkau.bibliotecap.dtos;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter
-@Setter
+@Data
+public final class RecursoDTO {
 
-@Document
-public final class Recurso {
-
-    @Id
     private String id;
     private String nombre;
     private LocalDate fecha;
@@ -25,5 +18,4 @@ public final class Recurso {
     private int cantidadPrestada;
     private String tipo;
     private String tematica;
-
 }
