@@ -11,72 +11,131 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
-public  class RecursoService {
-
-    private RecursoRepository recursoRepository;
-    private RecursoMapper mapper ;
+public class RecursoService implements IRecursoService{
 
     @Autowired
-    public RecursoService(RecursoRepository recursoRepository, RecursoMapper mapper) {
-        this.recursoRepository = recursoRepository;
-        this.mapper = mapper;
+    private RecursoRepository recursoRepository;
+
+    @Autowired
+    private RecursoMapper recursoMapper;
+
+
+    @Override
+    public List<RecursoDTO> lista() {
+        return recursoMapper.toRecursosDto(recursoRepository.findAll());
     }
 
-    public List<RecursoDTO> obtenerTodos() {
-        List<Recurso> recursos = recursoRepository.findAll();
-        return mapper.fromCollectionList(recursos);
-    }
-    public RecursoDTO obtenerPorId(String id) {
-        Recurso recurso = recursoRepository.findById(id).orElseThrow(() -> new RuntimeException("Recurso no encontrado"));
-        return mapper.fromCollection(recurso);
-    }
+    @Override
     public RecursoDTO crear(RecursoDTO recursoDTO) {
-        Recurso recurso = mapper.fromDTO(recursoDTO);
-        return mapper.fromCollection(recursoRepository.save(recurso));
+        Recurso recurso = recursoMapper.toRecurso(recursoDTO);
+        return recursoMapper.toRecursoDto(recursoRepository.save(recurso));
     }
+
+    @Override
+    public boolean eliminar(String id) {
+        return getById(id).map(recursoDTO -> {
+            recursoRepository.deleteById(id);
+            return true;
+        }).orElse(false);
+    }
+
+    @Override
+    public Optional<RecursoDTO> getById(String id) {
+        return recursoRepository.findById(id)
+                .map(recurso -> recursoMapper.toRecursoDto(recurso));
+    }
+
+    @Override
     public RecursoDTO modificar(RecursoDTO recursoDTO) {
-        Recurso recurso = mapper.fromDTO(recursoDTO);
-        recursoRepository.findById(recurso.getId()).orElseThrow(() -> new RuntimeException("Recurso no encontrado"));
-        return mapper.fromCollection(recursoRepository.save(recurso));
-    }
-    public void borrar(String id) {
-        recursoRepository.deleteById(id);
-    }
+        Optional<Recurso> recurso = recursoRepository.findById(recursoDTO.getId());
 
-    public String verificarDisponibilidad(String id) {
-        RecursoDTO recursoDTO = obtenerPorId(id);
-        if (diponible(recursoDTO)) {
-            return "El recurso " + recursoDTO.getNombre() + " se encuentra disponible y cuenta con "+(recursoDTO.getCantidadDisponible()
-            -recursoDTO.getCantidadPrestada())+" unidad(es) disponible(es)";
+        if(recurso.isPresent()){
+
+            recurso.get().setId(recursoDTO.getId());
+            recurso.get().setNombre(recursoDTO.getNombre());
+            recurso.get().setFecha(recursoDTO.getFecha());
+            recurso.get().setCantidadDisponible(recursoDTO.getCantidadDisponible());
+            recurso.get().setCantidadPrestada(recursoDTO.getCantidadPrestada());
+            recurso.get().setTipo(recursoDTO.getTipo());
+            recurso.get().setTematica(recursoDTO.getTematica());
+
+            return recursoMapper.toRecursoDto(recursoRepository.save(recurso.get()));
         }
-        return "El recurso " + recursoDTO.getNombre() + " no esta disponible desde la fecha " + recursoDTO.getFecha();
+        throw new RuntimeException("El recurso indicado no existe");
     }
-    private boolean diponible(RecursoDTO recursoDTO) {
-        return recursoDTO.getCantidadDisponible() > recursoDTO.getCantidadPrestada();
-    }
-    public String prestarRecurso(String id) {
-        RecursoDTO recursoDTO = obtenerPorId(id);
-        if (diponible(recursoDTO)) {
-            recursoDTO.setCantidadPrestada(recursoDTO.getCantidadPrestada() + 1);
-            recursoDTO.setFecha(LocalDate.now());
-            modificar(recursoDTO);
-            return "El recurso " + recursoDTO.getNombre() + " se ha prestado";
-        }
-        return "El recurso " + recursoDTO.getNombre() + " no tiene unidades disponibles para prestar";
-    }
-    public String restornarRecurso(String id) {
-        RecursoDTO recursoDTO = obtenerPorId(id);
-        if (recursoDTO.getCantidadPrestada() > 0) {
-            recursoDTO.setCantidadPrestada(recursoDTO.getCantidadPrestada() - 1);
-            modificar(recursoDTO);
-            return "El recurso " + recursoDTO.getNombre() + " ha sido devuelto";
-        }
-        return "El recurso " + recursoDTO.getNombre() + " no aparece como prestado";
+
+    @Override
+    public boolean verificarRecursoDisponible(RecursoDTO recursoDTO) {
+        return recursoDTO.getCantidadDisponible()>recursoDTO.getCantidadPrestada();
     }
 
 
 
+    @Override
+    public String recursoPrestado(String id) {
+        return getById(id).map(recursoDTO -> {
+            if(verificarRecursoDisponible(recursoDTO)){
+                recursoDTO.setCantidadPrestada(recursoDTO.getCantidadPrestada()+1);
+                recursoDTO.setFecha(LocalDate.now());
 
+                Recurso recursoModificado = recursoMapper.toRecurso(recursoDTO);
+                recursoRepository.save(recursoModificado);
+
+                return "Recurso Prestado Exitosamente";
+            }
+            return "Recurso no disponible en el momento";
+        }).orElseThrow(()->new RuntimeException("El recurso a prestar no existe"));
+    }
+
+    @Override
+    public String recursoDevuelto(String id) {
+        return getById(id).map(recursoDTO -> {
+
+            if(recursoDTO.getCantidadPrestada()>0){
+                recursoDTO.setCantidadPrestada(recursoDTO.getCantidadPrestada()-1);
+
+                Recurso recursoModificado = recursoMapper.toRecurso(recursoDTO);
+                recursoRepository.save(recursoModificado);
+
+                return "Devolucion del recurso con exito";
+            }
+
+            return "No hay recursos pendientes por devolver";
+        }).orElseThrow(()-> new RuntimeException("Recurso no existe"));
+    }
+
+    @Override
+    public List<RecursoDTO> recomendarRecursoPorTipo(String tipo) {
+        List<RecursoDTO> listarRecursos = new ArrayList<>();
+        recursoRepository.encontrarPorTipo(tipo).forEach(recurso -> {
+            listarRecursos.add(recursoMapper.toRecursoDto(recurso));
+        });
+        return listarRecursos;
+    }
+
+
+    @Override
+    public List<RecursoDTO> recomendadoPorTema(String tematica) {
+        List<RecursoDTO> listarRecursos = new ArrayList<>();
+        recursoRepository.encontrarPorTematica(tematica).forEach(recurso -> {
+            listarRecursos.add(recursoMapper.toRecursoDto(recurso));
+        });
+        return listarRecursos;
+    }
+
+    @Override
+    public List<RecursoDTO> recomendadoPorTemayTipo(String tipo, String tematica) {
+        List<RecursoDTO> recursoDTOS = new ArrayList<>();
+        List<RecursoDTO> listarRecursos = new ArrayList<>();
+
+        listarRecursos.addAll(recomendadoPorTema(tematica));
+        listarRecursos.addAll(recomendarRecursoPorTipo(tipo));
+
+        listarRecursos.stream().distinct().forEach(recursoDTOS::add);
+
+        return recursoDTOS;
+    }
 }
