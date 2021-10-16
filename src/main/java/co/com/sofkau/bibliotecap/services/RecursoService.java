@@ -84,7 +84,7 @@ public class RecursoService implements IRecursoService{
                 Recurso recursoModificado = recursoMapper.toRecurso(recursoDTO);
                 recursoRepository.save(recursoModificado);
 
-                return "Recurso Prestado Exitosamente";
+                return "EL prestamo del recurso fue exitoso";
             }
             return "Recurso no disponible en el momento";
         }).orElseThrow(()->new RuntimeException("El recurso a prestar no existe"));
